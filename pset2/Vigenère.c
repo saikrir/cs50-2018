@@ -35,7 +35,6 @@ bool isValidKey(const char *keyword) {
     for (int i = 0; i < strlen(keyword); i++)
     {
         if(!isValidChar(keyword[i])) {
-            //printf("Char [%c] is invalid ", keyword[i]);
             isvalid = false;
             break;
         }
