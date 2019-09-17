@@ -1,7 +1,24 @@
 #include <stdio.h>
-#include <cs50.h>
 #include "bmp.h"
+#include <stdlib.h>
 
+
+void readAndWriteRow(int imageWidth, int resizeFactor, int orginalPadding, int paddingNeeded,  FILE *infilePtr, FILE *outFilePtr) {
+
+    for(int col = 0 ; col < imageWidth; col++) {
+        RGBTRIPLE pixel;
+        fread(&pixel, sizeof(RGBTRIPLE), 1, infilePtr);
+        for(int i=0; i < resizeFactor; i++)
+        {
+            fwrite(&pixel, sizeof(RGBTRIPLE), 1, outFilePtr);
+        }
+    }
+    fseek(infilePtr, orginalPadding, SEEK_CUR);
+    for(int i =0; i < paddingNeeded; i++)
+    {
+        fputc(0x00 , outFilePtr);
+    }
+}
 
 void resize(const char *srcBmpName,const char *destBmpName, int resizeFactor) 
 {
@@ -28,9 +45,9 @@ void resize(const char *srcBmpName,const char *destBmpName, int resizeFactor)
     }
 
     int padding = (4 - (bi.biWidth * sizeof(RGBTRIPLE)) % 4) % 4;
-    int paddingNeeded = (resizeFactor * bi.biWidth * 3) % 4;
-    int imageHeight = abs(bi.biHeight);
-    int imageWidth = bi.biWidth;
+    int paddingNeeded = (4 - ((bi.biWidth * resizeFactor) * sizeof(RGBTRIPLE)) % 4) % 4;
+    int originalImageWidth = bi.biWidth;
+    int originalImageHeight = abs(bi.biHeight);
 
     int newWidth = resizeFactor * bi.biWidth;
     int newHeight = newWidth;
@@ -44,26 +61,21 @@ void resize(const char *srcBmpName,const char *destBmpName, int resizeFactor)
     fwrite(&bf, sizeof(BITMAPFILEHEADER), 1, destBmpFile);
     fwrite(&bi, sizeof(BITMAPINFOHEADER), 1, destBmpFile);
 
-    for(int row= 0; row < newHeight; row++) {
-        RGBTRIPLE triple;
 
-      
-        for (int col = 0; col < imageWidth; col++)
-        {
-            if((row % resizeFactor ==0)) {
-                printf("Row %d", row);
-                fread(&triple, sizeof(RGBTRIPLE), 1, srcBmpFile);
-            }
+    int seekBack = ((originalImageWidth * 3) + padding) * -1;
 
-            for(int i=0; i < resizeFactor; i++) {
-                fwrite(&triple, sizeof(RGBTRIPLE), 1, destBmpFile);
-            }
-            fseek(srcBmpFile, padding, SEEK_CUR);
-            for(int i =0; i < paddingNeeded; i++) {
-                fputc(0x00 , destBmpFile);
+    for(int row = 0 ; row < originalImageHeight; row ++) {
+
+        for (int x = 0;  x < resizeFactor; x++) {
+
+            readAndWriteRow(originalImageWidth, resizeFactor, padding, paddingNeeded, srcBmpFile, destBmpFile);
+            if(x!= (resizeFactor-1)){
+                fseek(srcBmpFile, seekBack, SEEK_CUR); // Rewind
             }
         }
     }
+
+
     fclose(srcBmpFile);
     fclose(destBmpFile);
     printf("reszing  %d \n", paddingNeeded);
